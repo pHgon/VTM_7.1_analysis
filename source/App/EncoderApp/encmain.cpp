@@ -33,7 +33,7 @@
 
 /** \file     encmain.cpp
     \brief    Encoder application main
-*/
+ */
 
 #include <time.h>
 #include <iostream>
@@ -43,6 +43,8 @@
 #include "EncoderLib/EncLibCommon.h"
 #include "EncApp.h"
 #include "Utilities/program_options_lite.h"
+
+#include "phmain.h"
 
 //! \ingroup EncoderApp
 //! \{
@@ -56,305 +58,269 @@ static const uint32_t settingValueWidth = 3;
 
 #define PRINT_CONSTANT(NAME, NAME_WIDTH, VALUE_WIDTH) std::cout << std::setw(NAME_WIDTH) << #NAME << " = " << std::setw(VALUE_WIDTH) << NAME << std::endl;
 
-static void printMacroSettings()
-{
-  if( g_verbosity >= DETAILS )
-  {
-    std::cout << "Non-environment-variable-controlled macros set as follows: \n" << std::endl;
+static void printMacroSettings() {
+    if (g_verbosity >= DETAILS) {
+        std::cout << "Non-environment-variable-controlled macros set as follows: \n" << std::endl;
 
-    //------------------------------------------------
+        //------------------------------------------------
 
-    //setting macros
+        //setting macros
 
-    PRINT_CONSTANT( RExt__DECODER_DEBUG_BIT_STATISTICS,                         settingNameWidth, settingValueWidth );
-    PRINT_CONSTANT( RExt__HIGH_BIT_DEPTH_SUPPORT,                               settingNameWidth, settingValueWidth );
-    PRINT_CONSTANT( RExt__HIGH_PRECISION_FORWARD_TRANSFORM,                     settingNameWidth, settingValueWidth );
-    PRINT_CONSTANT( ME_ENABLE_ROUNDING_OF_MVS,                                  settingNameWidth, settingValueWidth );
+        PRINT_CONSTANT(RExt__DECODER_DEBUG_BIT_STATISTICS, settingNameWidth, settingValueWidth);
+        PRINT_CONSTANT(RExt__HIGH_BIT_DEPTH_SUPPORT, settingNameWidth, settingValueWidth);
+        PRINT_CONSTANT(RExt__HIGH_PRECISION_FORWARD_TRANSFORM, settingNameWidth, settingValueWidth);
+        PRINT_CONSTANT(ME_ENABLE_ROUNDING_OF_MVS, settingNameWidth, settingValueWidth);
 
-    //------------------------------------------------
+        //------------------------------------------------
 
-    std::cout << std::endl;
-  }
+        std::cout << std::endl;
+    }
 }
 
 // ====================================================================================================================
 // Main function
 // ====================================================================================================================
 
-int main(int argc, char* argv[])
-{
-  // print information
-  fprintf( stdout, "\n" );
-  fprintf( stdout, "VVCSoftware: VTM Encoder Version %s ", VTM_VERSION );
-  fprintf( stdout, NVM_ONOS );
-  fprintf( stdout, NVM_COMPILEDBY );
-  fprintf( stdout, NVM_BITS );
+int main(int argc, char* argv[]) {
+    // print information
+    fprintf(stdout, "\n");
+    fprintf(stdout, "VVCSoftware: VTM Encoder Version %s ", VTM_VERSION);
+    fprintf(stdout, NVM_ONOS);
+    fprintf(stdout, NVM_COMPILEDBY);
+    fprintf(stdout, NVM_BITS);
 #if ENABLE_SIMD_OPT
-  std::string SIMD;
-  df::program_options_lite::Options opts;
-  opts.addOptions()
-    ( "SIMD", SIMD, string( "" ), "" )
-    ( "c", df::program_options_lite::parseConfigFile, "" );
-  df::program_options_lite::SilentReporter err;
-  df::program_options_lite::scanArgv( opts, argc, ( const char** ) argv, err );
-  fprintf( stdout, "[SIMD=%s] ", read_x86_extension( SIMD ) );
+    std::string SIMD;
+    df::program_options_lite::Options opts;
+    opts.addOptions()
+            ("SIMD", SIMD, string(""), "")
+            ("c", df::program_options_lite::parseConfigFile, "");
+    df::program_options_lite::SilentReporter err;
+    df::program_options_lite::scanArgv(opts, argc, (const char**) argv, err);
+    fprintf(stdout, "[SIMD=%s] ", read_x86_extension(SIMD));
 #endif
 #if ENABLE_TRACING
-  fprintf( stdout, "[ENABLE_TRACING] " );
+    fprintf(stdout, "[ENABLE_TRACING] ");
 #endif
 #if ENABLE_SPLIT_PARALLELISM
-  fprintf( stdout, "[SPLIT_PARALLEL (%d jobs)]", PARL_SPLIT_MAX_NUM_JOBS );
+    fprintf(stdout, "[SPLIT_PARALLEL (%d jobs)]", PARL_SPLIT_MAX_NUM_JOBS);
 #endif
 #if ENABLE_WPP_PARALLELISM
-  fprintf( stdout, "[WPP_PARALLEL]" );
+    fprintf(stdout, "[WPP_PARALLEL]");
 #endif
 #if ENABLE_WPP_PARALLELISM || ENABLE_SPLIT_PARALLELISM
-  const char* waitPolicy = getenv( "OMP_WAIT_POLICY" );
-  const char* maxThLim   = getenv( "OMP_THREAD_LIMIT" );
-  fprintf( stdout, waitPolicy ? "[OMP: WAIT_POLICY=%s," : "[OMP: WAIT_POLICY=,", waitPolicy );
-  fprintf( stdout, maxThLim   ? "THREAD_LIMIT=%s" : "THREAD_LIMIT=", maxThLim );
-  fprintf( stdout, "]" );
+    const char* waitPolicy = getenv("OMP_WAIT_POLICY");
+    const char* maxThLim = getenv("OMP_THREAD_LIMIT");
+    fprintf(stdout, waitPolicy ? "[OMP: WAIT_POLICY=%s," : "[OMP: WAIT_POLICY=,", waitPolicy);
+    fprintf(stdout, maxThLim ? "THREAD_LIMIT=%s" : "THREAD_LIMIT=", maxThLim);
+    fprintf(stdout, "]");
 #endif
-  fprintf( stdout, "\n" );
+    fprintf(stdout, "\n");
 
 #if JVET_N0278_FIXES
-  std::fstream bitstream;
-  EncLibCommon encLibCommon;
+    std::fstream bitstream;
+    EncLibCommon encLibCommon;
 
-  std::vector<EncApp*> pcEncApp(1);
-  bool resized = false;
-  int layerIdx = 0;
+    std::vector<EncApp*> pcEncApp(1);
+    bool resized = false;
+    int layerIdx = 0;
 
-  initROM();
-  TComHash::initBlockSizeToIndex();
+    initROM();
+    TComHash::initBlockSizeToIndex();
 
-  char** layerArgv = new char*[argc];
+    char** layerArgv = new char*[argc];
 
-  do
-  {
-    pcEncApp[layerIdx] = new EncApp( bitstream, &encLibCommon );
-    // create application encoder class per layer
-    pcEncApp[layerIdx]->create();
+    do {
+        pcEncApp[layerIdx] = new EncApp(bitstream, &encLibCommon);
+        // create application encoder class per layer
+        pcEncApp[layerIdx]->create();
 
-    // parse configuration per layer
-    try
-    {
-      int j = 0;
-      for( int i = 0; i < argc; i++ )
-      {
-        if( argv[i][0] == '-' && argv[i][1] == 'l' )
-        {
-          if( argv[i][2] == std::to_string( layerIdx ).c_str()[0] )
-          {
-            layerArgv[j] = argv[i + 1];
-            layerArgv[j + 1] = argv[i + 2];
-            j += 2;
-          }
-          i += 2;
+        // parse configuration per layer
+        try {
+            int j = 0;
+            for (int i = 0; i < argc; i++) {
+                if (argv[i][0] == '-' && argv[i][1] == 'l') {
+                    if (argv[i][2] == std::to_string(layerIdx).c_str()[0]) {
+                        layerArgv[j] = argv[i + 1];
+                        layerArgv[j + 1] = argv[i + 2];
+                        j += 2;
+                    }
+                    i += 2;
+                } else {
+                    layerArgv[j] = argv[i];
+                    j++;
+                }
+            }
+
+            if (!pcEncApp[layerIdx]->parseCfg(j, layerArgv)) {
+                pcEncApp[layerIdx]->destroy();
+                return 1;
+            }
+        } catch (df::program_options_lite::ParseFailure &e) {
+            std::cerr << "Error parsing option \"" << e.arg << "\" with argument \"" << e.val << "\"." << std::endl;
+            return 1;
         }
-        else
-        {
-          layerArgv[j] = argv[i];
-          j++;
+
+        int layerId = layerIdx; //VS: layerIdx should be converted to layerId after VPS is implemented
+        pcEncApp[layerIdx]->createLib(layerId);
+
+        if (!resized) {
+            pcEncApp.resize(pcEncApp[layerIdx]->getMaxLayers());
+            resized = true;
         }
-      }
 
-      if( !pcEncApp[layerIdx]->parseCfg( j, layerArgv ) )
-      {
-        pcEncApp[layerIdx]->destroy();
-        return 1;
-      }
-    }
-    catch( df::program_options_lite::ParseFailure &e )
-    {
-      std::cerr << "Error parsing option \"" << e.arg << "\" with argument \"" << e.val << "\"." << std::endl;
-      return 1;
-    }
+        layerIdx++;
+    } while (layerIdx < pcEncApp.size());
 
-    int layerId = layerIdx; //VS: layerIdx should be converted to layerId after VPS is implemented
-    pcEncApp[layerIdx]->createLib( layerId );
-
-    if( !resized )
-    {
-      pcEncApp.resize( pcEncApp[layerIdx]->getMaxLayers() );
-      resized = true;
-    }
-
-    layerIdx++;
-  } while( layerIdx < pcEncApp.size() );
-
-  delete[] layerArgv;
+    delete[] layerArgv;
 #else
-  EncApp* pcEncApp = new EncApp;
-  // create application encoder class
-  pcEncApp->create();
+    EncApp* pcEncApp = new EncApp;
+    // create application encoder class
+    pcEncApp->create();
 
-  // parse configuration
-  try
-  {
-    if(!pcEncApp->parseCfg( argc, argv ))
-    {
-      pcEncApp->destroy();
-      return 1;
+    // parse configuration
+    try {
+        if (!pcEncApp->parseCfg(argc, argv)) {
+            pcEncApp->destroy();
+            return 1;
+        }
+    } catch (df::program_options_lite::ParseFailure &e) {
+        std::cerr << "Error parsing option \"" << e.arg << "\" with argument \"" << e.val << "\"." << std::endl;
+        return 1;
     }
-  }
-  catch (df::program_options_lite::ParseFailure &e)
-  {
-    std::cerr << "Error parsing option \""<< e.arg <<"\" with argument \""<< e.val <<"\"." << std::endl;
-    return 1;
-  }
 #endif
 
 #if PRINT_MACRO_VALUES
-  printMacroSettings();
+    printMacroSettings();
 #endif
 
-  // starting time
-  auto startTime  = std::chrono::steady_clock::now();
-  std::time_t startTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  fprintf(stdout, " started @ %s", std::ctime(&startTime2) );
-  clock_t startClock = clock();
+    // starting time
+    auto startTime = std::chrono::steady_clock::now();
+    std::time_t startTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    fprintf(stdout, " started @ %s", std::ctime(&startTime2));
+    clock_t startClock = clock();
+    
+    ph();
 
 #if JVET_N0278_FIXES
-  // call encoding function per layer
-  bool eos = false;
+    // call encoding function per layer
+    bool eos = false;
 
-  while( !eos )
-  {
-    // read GOP
-    bool keepLoop = true;
-    while( keepLoop )
-    {
-      for( auto & encApp : pcEncApp )
-      {
+    while (!eos) {
+        // read GOP
+        bool keepLoop = true;
+        while (keepLoop) {
+            for (auto & encApp : pcEncApp) {
 #ifndef _DEBUG
-        try
-        {
+                try {
 #endif
-          keepLoop = encApp->encodePrep( eos );
+                    keepLoop = encApp->encodePrep(eos);
 #ifndef _DEBUG
-        }
-        catch( Exception &e )
-        {
-          std::cerr << e.what() << std::endl;
-          return EXIT_FAILURE;
-        }
-        catch( const std::bad_alloc &e )
-        {
-          std::cout << "Memory allocation failed: " << e.what() << std::endl;
-          return EXIT_FAILURE;
-        }
+                } catch (Exception &e) {
+                    std::cerr << e.what() << std::endl;
+                    return EXIT_FAILURE;
+                } catch (const std::bad_alloc &e) {
+                    std::cout << "Memory allocation failed: " << e.what() << std::endl;
+                    return EXIT_FAILURE;
+                }
 #endif
-      }
-    }
+            }
+        }
 
-    // encode GOP
-    keepLoop = true;
-    while( keepLoop )
-    {
-      for( auto & encApp : pcEncApp )
-      {
+        // encode GOP
+        keepLoop = true;
+        while (keepLoop) {
+            for (auto & encApp : pcEncApp) {
 #ifndef _DEBUG
-        try
-        {
+                try {
 #endif
-          keepLoop = encApp->encode();
+                    keepLoop = encApp->encode();
 #ifndef _DEBUG
-        }
-        catch( Exception &e )
-        {
-          std::cerr << e.what() << std::endl;
-          return EXIT_FAILURE;
-        }
-        catch( const std::bad_alloc &e )
-        {
-          std::cout << "Memory allocation failed: " << e.what() << std::endl;
-          return EXIT_FAILURE;
-        }
+                } catch (Exception &e) {
+                    std::cerr << e.what() << std::endl;
+                    return EXIT_FAILURE;
+                } catch (const std::bad_alloc &e) {
+                    std::cout << "Memory allocation failed: " << e.what() << std::endl;
+                    return EXIT_FAILURE;
+                }
 #endif
-      }
+            }
+        }
     }
-  }
 #else
-  // call encoding function
+    // call encoding function
 #ifndef _DEBUG
-  try
-  {
+    try {
 #endif
-    pcEncApp->encode();
+        pcEncApp->encode();
 #ifndef _DEBUG
-  }
-  catch( Exception &e )
-  {
-    std::cerr << e.what() << std::endl;
-    return EXIT_FAILURE;
-  }
-  catch (const std::bad_alloc &e)
-  {
-    std::cout << "Memory allocation failed: " << e.what() << std::endl;
-    return EXIT_FAILURE;
-  }
+    } catch (Exception &e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (const std::bad_alloc &e) {
+        std::cout << "Memory allocation failed: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 #endif
 #endif
-  // ending time
-  clock_t endClock = clock();
-  auto endTime = std::chrono::steady_clock::now();
-  std::time_t endTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    // ending time
+    clock_t endClock = clock();
+    auto endTime = std::chrono::steady_clock::now();
+    std::time_t endTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 #if JVET_O0756_CALCULATE_HDRMETRICS
 #if JVET_N0278_FIXES
-  auto metricTime = pcEncApp[0]->getMetricTime();
+    auto metricTime = pcEncApp[0]->getMetricTime();
 
-  for( int layerIdx = 1; layerIdx < pcEncApp.size(); layerIdx++ )
-  {
-    metricTime += pcEncApp[layerIdx]->getMetricTime();
-  }
+    for (int layerIdx = 1; layerIdx < pcEncApp.size(); layerIdx++) {
+        metricTime += pcEncApp[layerIdx]->getMetricTime();
+    }
 #else
-  auto metricTime     = pcEncApp->getMetricTime();
+    auto metricTime = pcEncApp->getMetricTime();
 #endif
-  auto totalTime      = std::chrono::duration_cast<std::chrono::milliseconds>( endTime - startTime ).count();
-  auto encTime        = std::chrono::duration_cast<std::chrono::milliseconds>( endTime - startTime - metricTime ).count();
-  auto metricTimeuser = std::chrono::duration_cast<std::chrono::milliseconds>( metricTime ).count();
+    auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime - metricTime).count();
+    auto metricTimeuser = std::chrono::duration_cast<std::chrono::milliseconds>(metricTime).count();
 #else
-  auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>( endTime - startTime).count();
+    auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 #endif
 
 #if JVET_N0278_FIXES
-  for( auto & encApp : pcEncApp )
-  {
-    encApp->destroyLib();
+    for (auto & encApp : pcEncApp) {
+        encApp->destroyLib();
 
-    // destroy application encoder class per layer
-    encApp->destroy();
+        // destroy application encoder class per layer
+        encApp->destroy();
 
-    delete encApp;
-  }
+        delete encApp;
+    }
 
-  // destroy ROM
-  destroyROM();
+    // destroy ROM
+    destroyROM();
 
-  pcEncApp.clear();
+    pcEncApp.clear();
 #else
-  // destroy application encoder class
-  pcEncApp->destroy();
+    // destroy application encoder class
+    pcEncApp->destroy();
 
-  delete pcEncApp;
+    delete pcEncApp;
 #endif
 
-  printf( "\n finished @ %s", std::ctime(&endTime2) );
+    printf("\n finished @ %s", std::ctime(&endTime2));
 
 #if JVET_O0756_CALCULATE_HDRMETRICS
-  printf(" Encoding Time (Total Time): %12.3f ( %12.3f ) sec. [user] %12.3f ( %12.3f ) sec. [elapsed]\n",
-         ((endClock - startClock) * 1.0 / CLOCKS_PER_SEC) - (metricTimeuser/1000.0),
-         (endClock - startClock) * 1.0 / CLOCKS_PER_SEC,
-         encTime / 1000.0,
-         totalTime / 1000.0);
+    printf(" Encoding Time (Total Time): %12.3f ( %12.3f ) sec. [user] %12.3f ( %12.3f ) sec. [elapsed]\n",
+            ((endClock - startClock) * 1.0 / CLOCKS_PER_SEC) - (metricTimeuser / 1000.0),
+            (endClock - startClock) * 1.0 / CLOCKS_PER_SEC,
+            encTime / 1000.0,
+            totalTime / 1000.0);
 #else
-  printf(" Total Time: %12.3f sec. [user] %12.3f sec. [elapsed]\n",
-         (endClock - startClock) * 1.0 / CLOCKS_PER_SEC,
-         encTime / 1000.0);
+    printf(" Total Time: %12.3f sec. [user] %12.3f sec. [elapsed]\n",
+            (endClock - startClock) * 1.0 / CLOCKS_PER_SEC,
+            encTime / 1000.0);
 #endif
+    
+    ph::printSummary();
 
-  return 0;
+    return 0;
 }
 
 //! \}
