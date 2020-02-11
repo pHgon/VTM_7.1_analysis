@@ -37,9 +37,11 @@ build/
 cmake/CMakeBuild/bin/pyhhi/
 outputs/
 VTM_7.1_analysis/
+myCFGs/
 
 # Outros arquivos
 *.yuv
 *.str
 *.csv
 *.txt
+*.bin
