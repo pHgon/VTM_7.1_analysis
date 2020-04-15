@@ -198,8 +198,11 @@ int main(int argc, char* argv[]) {
     std::time_t startTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     fprintf(stdout, " started @ %s", std::ctime(&startTime2));
     clock_t startClock = clock();
-    
+
+// Construtor classe Paulo
+#if PHMAIN_H
     ph();
+#endif
 
 #if JVET_N0278_FIXES
     // call encoding function per layer
@@ -318,7 +321,9 @@ int main(int argc, char* argv[]) {
             encTime / 1000.0);
 #endif
     
+#if PHMAIN_H
     ph::printSummary();
+#endif
 
     return 0;
 }

@@ -57,7 +57,7 @@
 //! \ingroup EncoderLib
 //! \{
 
-static const Mv s_acMvRefineH[9] ={
+static const Mv s_acMvRefineH[9] = {
     Mv(0, 0), // 0
     Mv(0, -1), // 1
     Mv(0, 1), // 2
@@ -69,7 +69,7 @@ static const Mv s_acMvRefineH[9] ={
     Mv(1, 1) // 8
 };
 
-static const Mv s_acMvRefineQ[9] ={
+static const Mv s_acMvRefineQ[9] = {
     Mv(0, 0), // 0
     Mv(0, -1), // 1
     Mv(0, 1), // 2
@@ -3686,7 +3686,7 @@ void InterSearch::xTZSearchSelective(const PredictionUnit& pu,
                 xTZSearchHelp(cStruct, iStartX, iStartY, 0, 1);
             }
         }
-    }        //Smaller MV, refine around predictor
+    }//Smaller MV, refine around predictor
     else if (bStarRefinementEnable && cStruct.uiBestDistance > 0) {
         // start refinement
         while (cStruct.uiBestDistance > 0) {

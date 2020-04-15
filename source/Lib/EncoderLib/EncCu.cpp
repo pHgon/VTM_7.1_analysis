@@ -57,6 +57,8 @@
 extern std::recursive_mutex g_cache_mutex;
 #endif
 
+#include "../../App/EncoderApp/phmain.h"
+
 
 
 //! \ingroup EncoderLib
@@ -728,12 +730,28 @@ void EncCu::xCompressCU(CodingStructure*& tempCS, CodingStructure*& bestCS, Part
                 const bool skipAltHpelIF = (int( (currTestMode.opts & ETO_IMV) >> ETO_IMV_SHIFT) == 4) && (bestIntPelCost > 1.25 * bestCS->cost);
                 if (!skipAltHpelIF) {
                     tempCS->bestCS = bestCS;
+
+#if TRACE_CU
+                    ph::printTrace("xCheckRDCostInterIMV", 1);
+#endif
                     xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode, bestIntPelCost);
+#if TRACE_CU
+                    ph::printTrace("xCheckRDCostInterIMV", -1);
+#endif                    
+
                     tempCS->bestCS = nullptr;
                 }
             } else {
                 tempCS->bestCS = bestCS;
+
+#if TRACE_CU
+                ph::printTrace("xCheckRDCostInter", 1);
+#endif
                 xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+#if TRACE_CU
+                ph::printTrace("xCheckRDCostInter", -1);
+#endif
+
                 tempCS->bestCS = nullptr;
             }
 
@@ -3548,7 +3566,13 @@ void EncCu::xCheckRDCostInter(CodingStructure *&tempCS, CodingStructure *&bestCS
         uint8_t gbiIdx = cu.GBiIdx;
         bool testGbi = (gbiIdx != GBI_DEFAULT);
 
+#if TRACE_CU
+        ph::printTrace("predInterSearch", 1);
+#endif
         m_pcInterSearch->predInterSearch(cu, partitioner);
+#if TRACE_CU
+        ph::printTrace("predInterSearch", -1);
+#endif
 
         gbiIdx = CU::getValidGbiIdx(cu);
         if (testGbi && gbiIdx == GBI_DEFAULT) // Enabled GBi but the search results is uni.
@@ -3679,7 +3703,13 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 
         cu.firstPU->interDir = 10;
 
+#if TRACE_CU
+        ph::printTrace("predInterSearch", 1);
+#endif
         m_pcInterSearch->predInterSearch(cu, partitioner);
+#if TRACE_CU
+        ph::printTrace("predInterSearch", -1);
+#endif
 
         if (cu.firstPU->interDir <= 3) {
             gbiIdx = CU::getValidGbiIdx(cu);
@@ -3965,13 +3995,13 @@ void EncCu::xEncodeInterResidual(CodingStructure *&tempCS
     const PredictionUnit& pu = *cu->firstPU;
 
     // clang-format off
-    const int affineShiftTab[3] ={
+    const int affineShiftTab[3] = {
         MV_PRECISION_INTERNAL - MV_PRECISION_QUARTER,
         MV_PRECISION_INTERNAL - MV_PRECISION_SIXTEENTH,
         MV_PRECISION_INTERNAL - MV_PRECISION_INT
     };
 
-    const int normalShiftTab[NUM_IMV_MODES] ={
+    const int normalShiftTab[NUM_IMV_MODES] = {
         MV_PRECISION_INTERNAL - MV_PRECISION_QUARTER,
         MV_PRECISION_INTERNAL - MV_PRECISION_INT,
         MV_PRECISION_INTERNAL - MV_PRECISION_4PEL,
