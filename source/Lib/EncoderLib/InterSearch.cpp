@@ -53,6 +53,8 @@
 #include <math.h>
 #include <limits>
 
+#include "../../App/EncoderApp/phmain.h"
+
 
 //! \ingroup EncoderLib
 //! \{
@@ -2604,6 +2606,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
 
             uiHevcCost = (uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1]) ? uiCostBi : ((uiCost[0] <= uiCost[1]) ? uiCost[0] : uiCost[1]);
         }
+
+        /********************************************************************************/
+        /********************************************************************************/
+        /************************************ AFFINE ************************************/
+        /********************************************************************************/
+        /********************************************************************************/
+
         if (cu.Y().width > 8 && cu.Y().height > 8 && cu.slice->getSPS()->getUseAffine()
                 && checkAffine
                 && (gbiIdx == GBI_DEFAULT || m_affineModeSelected || !m_pcEncCfg->getUseGBiFast())
@@ -2633,8 +2642,14 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
             Mv acMvAffine4Para[2][33][3];
             int refIdx4Para[2] = {-1, -1};
 
+#if TRACE_INTER
+            ph::printTrace("xPredAffineInterSearch_4", 1);
+#endif
             xPredAffineInterSearch(pu, origBuf, puIdx, uiLastModeTemp, uiAffineCost, cMvHevcTemp, acMvAffine4Para, refIdx4Para, gbiIdx, enforceGBiPred,
                     ((cu.slice->getSPS()->getUseGBi() == true) ? getWeightIdxBits(gbiIdx) : 0));
+#if TRACE_INTER
+            ph::printTrace("xPredAffineInterSearch_4", -1);
+#endif
 
             if (pu.cu->imv == 0) {
                 storeAffineMotion(pu.mvAffi, pu.refIdx, AFFINEMODEL_4PARAM, gbiIdx);

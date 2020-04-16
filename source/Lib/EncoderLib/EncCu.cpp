@@ -730,7 +730,6 @@ void EncCu::xCompressCU(CodingStructure*& tempCS, CodingStructure*& bestCS, Part
                 const bool skipAltHpelIF = (int( (currTestMode.opts & ETO_IMV) >> ETO_IMV_SHIFT) == 4) && (bestIntPelCost > 1.25 * bestCS->cost);
                 if (!skipAltHpelIF) {
                     tempCS->bestCS = bestCS;
-
 #if TRACE_CU
                     ph::printTrace("xCheckRDCostInterIMV", 1);
 #endif
@@ -743,6 +742,13 @@ void EncCu::xCompressCU(CodingStructure*& tempCS, CodingStructure*& bestCS, Part
                 }
             } else {
                 tempCS->bestCS = bestCS;
+
+#if TRACE_PARTITIONING
+                ph::printTrace("", 0);
+                string message = to_string(tempCS->area.Y().width) + "x" + to_string(tempCS->area.Y().height) + "  "
+                        + "(" + to_string(tempCS->area.Y().x) + "," + to_string(tempCS->area.Y().y) + ") ";
+                ph::printTrace(message, 1);
+#endif
 
 #if TRACE_CU
                 ph::printTrace("xCheckRDCostInter", 1);
@@ -837,6 +843,7 @@ void EncCu::xCompressCU(CodingStructure*& tempCS, CodingStructure*& bestCS, Part
                 }
 
                 xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode, modeTypeParent, skipInterPass);
+
                 //recover cons modes
                 tempCS->modeType = partitioner.modeType = modeTypeParent;
                 tempCS->treeType = partitioner.treeType = treeTypeParent;
@@ -3566,12 +3573,12 @@ void EncCu::xCheckRDCostInter(CodingStructure *&tempCS, CodingStructure *&bestCS
         uint8_t gbiIdx = cu.GBiIdx;
         bool testGbi = (gbiIdx != GBI_DEFAULT);
 
-#if TRACE_CU
-        ph::printTrace("predInterSearch", 1);
+#if TRACE_CU || TRACE_INTER
+        ph::printTrace("predInterSearch [" + to_string(cu.imv) + "]", 1);
 #endif
         m_pcInterSearch->predInterSearch(cu, partitioner);
-#if TRACE_CU
-        ph::printTrace("predInterSearch", -1);
+#if TRACE_CU || TRACE_INTER
+        ph::printTrace("predInterSearch [" + to_string(cu.imv) + "]", -1);
 #endif
 
         gbiIdx = CU::getValidGbiIdx(cu);
@@ -3704,11 +3711,11 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
         cu.firstPU->interDir = 10;
 
 #if TRACE_CU
-        ph::printTrace("predInterSearch", 1);
+        ph::printTrace("predInterSearch [" + to_string(cu.imv) + "]", 1);
 #endif
         m_pcInterSearch->predInterSearch(cu, partitioner);
 #if TRACE_CU
-        ph::printTrace("predInterSearch", -1);
+        ph::printTrace("predInterSearch [" + to_string(cu.imv) + "]", -1);
 #endif
 
         if (cu.firstPU->interDir <= 3) {
