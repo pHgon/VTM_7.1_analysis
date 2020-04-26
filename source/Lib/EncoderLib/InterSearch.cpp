@@ -2113,9 +2113,18 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
         unsigned imvShift = pu.cu->imv == IMV_HPEL ? 1 : (pu.cu->imv << 1);
         if (checkNonAffine) {
             //  Uni-directional prediction
+
+#if TRACE_INTER
+            ph::printTrace("UNI_DIRECTIONAL_STAGE", 1);
+#endif
             for (int iRefList = 0; iRefList < iNumPredDir; iRefList++) {
                 RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
                 for (int iRefIdxTemp = 0; iRefIdxTemp < cs.slice->getNumRefIdx(eRefPicList); iRefIdxTemp++) {
+
+#if TRACE_INTER
+                    ph::printTrace("LISTA " + to_string(iRefList) + " REFERENCIA " + to_string(iRefIdxTemp), 1);
+#endif
+
                     uiBitsTemp = uiMbBits[iRefList];
                     if (cs.slice->getNumRefIdx(eRefPicList) > 1) {
                         uiBitsTemp += iRefIdxTemp + 1;
@@ -2154,10 +2163,22 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                             /*calculate the correct cost*/
                             uiCostTemp += m_pcRdCost->getCost(uiBitsTemp);
                         } else {
+#if TRACE_INTER
+                            ph::printTrace("xMotionEstimation", 1);
+#endif
                             xMotionEstimation(pu, origBuf, eRefPicList, cMvPred[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList]);
+#if TRACE_INTER
+                            ph::printTrace("xMotionEstimation", -1);
+#endif
                         }
                     } else {
+#if TRACE_INTER
+                        ph::printTrace("xMotionEstimation", 1);
+#endif
                         xMotionEstimation(pu, origBuf, eRefPicList, cMvPred[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList]);
+#if TRACE_INTER
+                        ph::printTrace("xMotionEstimation", -1);
+#endif
                     }
                     if (cu.cs->sps->getUseGBi() && cu.GBiIdx == GBI_DEFAULT && cu.cs->slice->isInterB()) {
                         const bool checkIdentical = true;
@@ -2188,8 +2209,14 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                         mvValidList1 = cMvTemp[iRefList][iRefIdxTemp];
                         refIdxValidList1 = iRefIdxTemp;
                     }
+#if TRACE_INTER
+                    ph::printTrace("LISTA " + to_string(iRefList) + " REFERENCIA " + to_string(iRefIdxTemp), -1);
+#endif
                 }
             }
+#if TRACE_INTER
+            ph::printTrace("UNI_DIRECTIONAL_STAGE", -1);
+#endif
 
             ::memcpy(cMvHevcTemp, cMvTemp, sizeof (cMvTemp));
             if (cu.imv == 0 && (!cu.slice->getSPS()->getUseGBi() || gbiIdx == GBI_DEFAULT)) {
@@ -2204,6 +2231,11 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
             if ((cs.slice->isInterB()) && (PU::isBipredRestriction(pu) == false)
                     && (cu.slice->getCheckLDC() || gbiIdx == GBI_DEFAULT || !m_affineModeSelected || !m_pcEncCfg->getUseGBiFast())
                     ) {
+
+#if TRACE_INTER
+                ph::printTrace("BI_PREDICTION_STAGE", 1);
+#endif
+
                 bool doBiPred = true;
                 tryBipred = 1;
                 cMvBi[0] = cMv[0];
@@ -2244,7 +2276,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                         }
                     }
                     PelUnitBuf predBufTmp = m_tmpPredStorage[REF_PIC_LIST_1].getBuf(UnitAreaRelative(cu, pu));
+#if TRACE_INTER
+                    ph::printTrace("motionCompensation", 1);
+#endif
                     motionCompensation(pu, predBufTmp, REF_PIC_LIST_1);
+#if TRACE_INTER
+                    ph::printTrace("motionCompensation", -1);
+#endif
 
                     uiMotBits[0] = uiBits[0] - uiMbBits[0];
                     uiMotBits[1] = uiMbBits[1];
@@ -2307,7 +2345,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                             pu.refIdx[1 - iRefList] = iRefIdx[1 - iRefList];
 
                             PelUnitBuf predBufTmp = m_tmpPredStorage[1 - iRefList].getBuf(UnitAreaRelative(cu, pu));
+#if TRACE_INTER
+                            ph::printTrace("motionCompensation", 1);
+#endif
                             motionCompensation(pu, predBufTmp, RefPicList(1 - iRefList));
+#if TRACE_INTER
+                            ph::printTrace("motionCompensation", -1);
+#endif
                         }
 
                         RefPicList eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
@@ -2327,9 +2371,15 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                         iRefStart = 0;
                         iRefEnd = cs.slice->getNumRefIdx(eRefPicList) - 1;
                         for (int iRefIdxTemp = iRefStart; iRefIdxTemp <= iRefEnd; iRefIdxTemp++) {
+#if TRACE_INTER
+                            ph::printTrace("CANDIDATO " + to_string(iRefIdxTemp), 1);
+#endif
                             if (m_pcEncCfg->getUseGBiFast() && (gbiIdx != GBI_DEFAULT)
                                     && (pu.cu->slice->getRefPic(eRefPicList, iRefIdxTemp)->getPOC() == pu.cu->slice->getRefPic(RefPicList(1 - iRefList), pu.refIdx[1 - iRefList])->getPOC())
                                     && (!pu.cu->imv && pu.cu->slice->getTLayer() > 1)) {
+#if TRACE_INTER
+                                ph::printTrace("CANDIDATO " + to_string(iRefIdxTemp), -1);
+#endif
                                 continue;
                             }
                             uiBitsTemp = uiMbBits[2] + uiMotBits[1 - iRefList];
@@ -2346,7 +2396,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                             }
                             // call ME
                             xCopyAMVPInfo(&aacAMVPInfo[iRefList][iRefIdxTemp], &amvp[eRefPicList]);
+#if TRACE_INTER
+                            ph::printTrace("xMotionEstimation", 1);
+#endif
                             xMotionEstimation(pu, origBuf, eRefPicList, cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], true);
+#if TRACE_INTER
+                            ph::printTrace("xMotionEstimation", -1);
+#endif
                             xCheckBestMVP(eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], amvp[eRefPicList], uiBitsTemp, uiCostTemp, pu.cu->imv);
                             if (uiCostTemp < uiCostBi) {
                                 bChanged = true;
@@ -2365,9 +2421,18 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                                     pu.refIdx[eRefPicList] = iRefIdxBi[iRefList];
 
                                     PelUnitBuf predBufTmp = m_tmpPredStorage[iRefList].getBuf(UnitAreaRelative(cu, pu));
+#if TRACE_INTER
+                                    ph::printTrace("motionCompensation", 1);
+#endif
                                     motionCompensation(pu, predBufTmp, eRefPicList);
+#if TRACE_INTER
+                                    ph::printTrace("motionCompensation", -1);
+#endif
                                 }
                             }
+#if TRACE_INTER
+                            ph::printTrace("CANDIDATO " + to_string(iRefIdxTemp), -1);
+#endif
                         } // for loop-iRefIdxTemp
 
                         if (!bChanged) {
@@ -2494,7 +2559,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                     symCost = costStart - mvpCost;
 
                     // ME
+#if TRACE_INTER
+                    ph::printTrace("xSymmetricMotionEstimation", 1);
+#endif
                     xSymmetricMotionEstimation(pu, origBuf, cMvPredSym[curRefList], cMvPredSym[tarRefList], eCurRefList, cCurMvField, cTarMvField, symCost, gbiIdx);
+#if TRACE_INTER
+                    ph::printTrace("xSymmetricMotionEstimation", -1);
+#endif
 
                     symCost += mvpCost;
 
@@ -2528,6 +2599,9 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                         cMvPredBi[tarRefList][iRefIdxBi[tarRefList]] = cMvPredSym[tarRefList];
                     }
                 }
+#if TRACE_INTER
+                ph::printTrace("BI_PREDICTION_STAGE", -1);
+#endif
             } // if (B_SLICE)
 
 
@@ -2617,6 +2691,11 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                 && checkAffine
                 && (gbiIdx == GBI_DEFAULT || m_affineModeSelected || !m_pcEncCfg->getUseGBiFast())
                 ) {
+
+#if TRACE_INTER
+            ph::printTrace("AFFINE_STAGE", 1);
+#endif
+
             m_hevcCost = uiHevcCost;
             // save normal hevc result
             uint32_t uiMRGIndex = pu.mergeIdx;
@@ -2685,8 +2764,15 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
 
                     Distortion uiAffine6Cost = std::numeric_limits<Distortion>::max();
                     cu.affineType = AFFINEMODEL_6PARAM;
+
+#if TRACE_INTER
+                    ph::printTrace("xPredAffineInterSearch_6", 1);
+#endif
                     xPredAffineInterSearch(pu, origBuf, puIdx, uiLastModeTemp, uiAffine6Cost, cMvHevcTemp, acMvAffine4Para, refIdx4Para, gbiIdx, enforceGBiPred,
                             ((cu.slice->getSPS()->getUseGBi() == true) ? getWeightIdxBits(gbiIdx) : 0));
+#if TRACE_INTER
+                    ph::printTrace("xPredAffineInterSearch_6", -1);
+#endif
 
                     if (pu.cu->imv == 0) {
                         storeAffineMotion(pu.mvAffi, pu.refIdx, AFFINEMODEL_6PARAM, gbiIdx);
@@ -2746,6 +2832,9 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
                 CHECK(!cu.affine, "Wrong.");
                 uiLastMode = uiLastModeTemp;
             }
+#if TRACE_INTER
+            ph::printTrace("AFFINE_STAGE", -1);
+#endif
         }
 
         if (cu.firstPU->interDir == 3 && !cu.firstPU->mergeFlag) {
@@ -2766,7 +2855,13 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner) {
         if (gbiIdx == GBI_DEFAULT || !m_affineMotion.affine4ParaAvail || !m_affineMotion.affine6ParaAvail) {
             m_affineMotion.hevcCost[pu.cu->imv] = uiHevcCost;
         }
+#if TRACE_INTER
+        ph::printTrace("motionCompensation", 1);
+#endif
         motionCompensation(pu, predBuf, REF_PIC_LIST_X);
+#if TRACE_INTER
+        ph::printTrace("motionCompensation", -1);
+#endif
         puIdx++;
     }
 
@@ -3111,13 +3206,25 @@ void InterSearch::xMotionEstimation(PredictionUnit& pu, PelUnitBuf& origBuf, Ref
 
         cStruct.subShiftMode = (!m_pcEncCfg->getRestrictMESampling() && m_pcEncCfg->getMotionEstimationSearchMethod() == MESEARCH_SELECTIVE) ? 1 :
                 (m_pcEncCfg->getFastInterSearchMode() == FASTINTERSEARCH_MODE1 || m_pcEncCfg->getFastInterSearchMode() == FASTINTERSEARCH_MODE3) ? 2 : 0;
+#if TRACE_INTER
+        ph::printTrace("xTZSearch", 1);
+#endif
         xTZSearch(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, ruiCost, NULL, false, true);
+#if TRACE_INTER
+        ph::printTrace("xTZSearch", -1);
+#endif
     } else {
         cStruct.subShiftMode = (!m_pcEncCfg->getRestrictMESampling() && m_pcEncCfg->getMotionEstimationSearchMethod() == MESEARCH_SELECTIVE) ? 1 :
                 (m_pcEncCfg->getFastInterSearchMode() == FASTINTERSEARCH_MODE1 || m_pcEncCfg->getFastInterSearchMode() == FASTINTERSEARCH_MODE3) ? 2 : 0;
         rcMv = rcMvPred;
         const Mv *pIntegerMv2Nx2NPred = 0;
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchFast", 1);
+#endif
         xPatternSearchFast(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, ruiCost, pIntegerMv2Nx2NPred);
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchFast", -1);
+#endif
         if (blkCache) {
             blkCache->setMv(pu.cs->area, eRefPicList, iRefIdxPred, rcMv);
         } else {
@@ -3139,7 +3246,13 @@ void InterSearch::xMotionEstimation(PredictionUnit& pu, PelUnitBuf& origBuf, Ref
                 MCTSHelper::clipMvToArea(rcMv, pu.Y(), curTileAreaSubPelRestricted, *pu.cs->sps, 0);
             }
         }
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchFracDIF", 1);
+#endif
         xPatternSearchFracDIF(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, cMvHalf, cMvQter, ruiCost);
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchFracDIF", -1);
+#endif
         m_pcRdCost->setCostScale(0);
         rcMv <<= 2;
         rcMv += (cMvHalf <<= 1);
@@ -3151,7 +3264,13 @@ void InterSearch::xMotionEstimation(PredictionUnit& pu, PelUnitBuf& origBuf, Ref
     } else // integer refinement for integer-pel and 4-pel resolution
     {
         rcMv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchIntRefine", 1);
+#endif
         xPatternSearchIntRefine(pu, cStruct, rcMv, rcMvPred, riMVPIdx, ruiBits, ruiCost, amvpInfo, fWeight);
+#if TRACE_INTER
+        ph::printTrace("xPatternSearchIntRefine", -1);
+#endif
     }
     DTRACE(g_trace_ctx, D_ME, "   MECost<L%d,%d>: %6d (%d)  MV:%d,%d\n", (int) eRefPicList, (int) bBi, ruiCost, ruiBits, rcMv.getHor() << 2, rcMv.getVer() << 2);
 }
@@ -3267,15 +3386,33 @@ void InterSearch::xPatternSearchFast(const PredictionUnit& pu,
         const Mv * const pIntegerMv2Nx2NPred) {
     switch (m_motionEstimationSearchMethod) {
         case MESEARCH_DIAMOND:
+#if TRACE_INTER
+            ph::printTrace("xTZSearch", 1);
+#endif
             xTZSearch(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, ruiSAD, pIntegerMv2Nx2NPred, false);
+#if TRACE_INTER
+            ph::printTrace("xTZSearch", -1);
+#endif
             break;
 
         case MESEARCH_SELECTIVE:
+#if TRACE_INTER
+            ph::printTrace("xTZSearchSelective", 1);
+#endif
             xTZSearchSelective(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, ruiSAD, pIntegerMv2Nx2NPred);
+#if TRACE_INTER
+            ph::printTrace("xTZSearchSelective", -1);
+#endif
             break;
 
         case MESEARCH_DIAMOND_ENHANCED:
+#if TRACE_INTER
+            ph::printTrace("xTZSearch_enhanced", 1);
+#endif
             xTZSearch(pu, eRefPicList, iRefIdxPred, cStruct, rcMv, ruiSAD, pIntegerMv2Nx2NPred, true);
+#if TRACE_INTER
+            ph::printTrace("xTZSearch_enhanced", -1);
+#endif
             break;
 
         case MESEARCH_FULL: // shouldn't get here.
